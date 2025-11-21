@@ -157,30 +157,50 @@
       scene.add(light);
 
       // 3. Anchor para el target (índice 0 = primer target del archivo .mind)
+      // Crear referencia al elemento de video y su textura antes del anchor
+      const video = document.getElementById("introVideo");
+      const videoTexture = new THREE.VideoTexture(video);
+
       const anchor = mindarThree.addAnchor(0);
-      
+
       // Ocultar el anchor al inicio (solo mostrar cuando se detecte el target)
       anchor.group.visible = false;
-      
-      // Listener para mostrar/ocultar cuando se detecta o pierde el target
+
+      // Temporizador para estabilizar la detección y evitar reproducciones accidentales
+      let anchorFoundTimer = null;
+      const PLAY_DELAY = 200; // ms: esperar un poco antes de reproducir
+
+      // Mostrar/ocultar contenido y controlar reproducción del video solo cuando el target está en vista
       anchor.onTargetFound = () => {
         anchor.group.visible = true;
+        // Si ya hay un timer pendiente, reiniciarlo
+        if (anchorFoundTimer) clearTimeout(anchorFoundTimer);
+        anchorFoundTimer = setTimeout(async () => {
+          try {
+            await video.play();
+            videoTexture.needsUpdate = true;
+          } catch (e) {
+            console.warn('No se pudo reproducir el video al encontrar target:', e);
+          }
+          anchorFoundTimer = null;
+        }, PLAY_DELAY);
       };
-      
+
       anchor.onTargetLost = () => {
+        // Cancelar reproducción pendiente
+        if (anchorFoundTimer) {
+          clearTimeout(anchorFoundTimer);
+          anchorFoundTimer = null;
+        }
+        // Ocultar contenido y pausar/reiniciar el video para evitar audio residual
         anchor.group.visible = false;
-      };
-      
-      // Ocultar el anchor al inicio (solo mostrar cuando se detecte el target)
-      anchor.group.visible = false;
-      
-      // Listener para mostrar/ocultar cuando se detecta o pierde el target
-      anchor.onTargetFound = () => {
-        anchor.group.visible = true;
-      };
-      
-      anchor.onTargetLost = () => {
-        anchor.group.visible = false;
+        try {
+          video.pause();
+          video.currentTime = 0;
+          videoTexture.needsUpdate = true;
+        } catch (e) {
+          console.warn('Error al pausar/reiniciar video al perder target:', e);
+        }
       };
 
       // ========== CONTENIDO TIPO 1: OBJETO 3D ==========
@@ -221,8 +241,7 @@
       anchor.group.add(imagePlane);
 
       // ========== CONTENIDO TIPO 3: VIDEO ==========
-      const video = document.getElementById("introVideo");
-      const videoTexture = new THREE.VideoTexture(video);
+      // Se usa la textura de video creada antes del anchor
       const videoGeometry = new THREE.PlaneGeometry(0.8, 0.45);
       const videoMaterial = new THREE.MeshBasicMaterial({
         map: videoTexture,
@@ -242,13 +261,23 @@
         if (isRunning) return;
         
         try {
+          // marcar como iniciando
           isRunning = true;
-          toggleBtn.disabled = true;
           toggleBtn.textContent = "Cargando...";
+          // dejar el botón clickeable para permitir cancelar durante la carga
+          toggleBtn.disabled = false;
 
-          // Iniciar RA y luego reproducir el video (después de acción del usuario)
+          // Iniciar RA (el video se reproducirá únicamente cuando el target sea detectado)
           await mindarThree.start();
-          video.play();
+
+          // Si el usuario detuvo mientras se iniciaba, salir sin activar la UI
+          if (!isRunning) {
+            try { await mindarThree.stop(); } catch (e) { /* ignore */ }
+            toggleBtn.textContent = "Iniciar AR";
+            toggleBtn.classList.remove("active");
+            toggleBtn.disabled = false;
+            return;
+          }
 
           toggleBtn.textContent = "Detener";
           toggleBtn.disabled = false;
@@ -273,35 +302,42 @@
 
       const stop = async () => {
         try {
-          isRunning = false;
-          toggleBtn.disabled = true;
-          toggleBtn.textContent = "Limpiando...";
+            // marcar no corriendo temprano para que start() pueda ver la cancelación
+            isRunning = false;
+            toggleBtn.disabled = true;
+            toggleBtn.textContent = "Limpiando...";
 
-          await mindarThree.stop();
-          renderer.setAnimationLoop(null);
-          
-          // Limpiar completamente: pausar video, reiniciar, y limpiar renderer
-          video.pause();
-          video.currentTime = 0;
-          videoTexture.needsUpdate = true;
-          
-          // Ocultar contenido
-          anchor.group.visible = false;
-          
-          // Limpiar canvas completamente
-          renderer.clear();
-          renderer.clearColor();
-          
-          // Forzar limpieza de WebGL
-          const canvas = renderer.domElement;
-          const gl = canvas.getContext("webgl") || canvas.getContext("webgl2");
-          if (gl) {
-            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-          }
+            // Intentar detener MindAR sin depender del estado de tracking
+            try { await mindarThree.stop(); } catch (e) { console.warn('mindarThree.stop() fallo:', e); }
+            renderer.setAnimationLoop(null);
 
-          toggleBtn.textContent = "Iniciar AR";
-          toggleBtn.disabled = false;
-          toggleBtn.classList.remove("active");
+            // Limpiar completamente: pausar video, reiniciar, y limpiar renderer
+            try { video.pause(); } catch (e) {}
+            try { video.currentTime = 0; } catch (e) {}
+            try { videoTexture.needsUpdate = true; } catch (e) {}
+
+            // Cancelar cualquier reproducción pendiente
+            try { if (anchorFoundTimer) { clearTimeout(anchorFoundTimer); anchorFoundTimer = null; } } catch (e) {}
+
+            // Ocultar contenido
+            try { anchor.group.visible = false; } catch (e) {}
+
+            // Limpiar canvas completamente
+            try { renderer.clear(); } catch (e) {}
+            try { renderer.clearColor(); } catch (e) {}
+
+            // Forzar limpieza de WebGL
+            try {
+              const canvas = renderer.domElement;
+              const gl = canvas.getContext("webgl") || canvas.getContext("webgl2");
+              if (gl) {
+                gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+              }
+            } catch (e) {}
+
+            toggleBtn.textContent = "Iniciar AR";
+            toggleBtn.disabled = false;
+            toggleBtn.classList.remove("active");
         } catch (error) {
           console.error("Error al detener AR:", error);
           toggleBtn.textContent = "Iniciar AR";
