@@ -99,16 +99,18 @@
       @media (max-width: 480px) {
         #controls {
           bottom: 16px;
+          left: 50%;
+          transform: translateX(-50%);
           padding: 12px 16px;
           flex-direction: column;
-          width: calc(100% - 32px);
-          margin: 0 16px;
+          width: auto;
+          max-width: calc(100% - 32px);
         }
 
         #controls button {
           padding: 16px 24px;
           font-size: 15px;
-          min-width: 100%;
+          min-width: 120px;
         }
       }
 
@@ -165,7 +167,7 @@
       const loader = new GLTFLoader();
       loader.load("models/avatar.glb", (gltf) => {
         cube = gltf.scene;
-        cube.scale.set(0.08, 0.08, 0.08);
+        cube.scale.set(0.03, 0.03, 0.03);
         cube.position.set(0, 0.1, 0);
         anchor.group.add(cube);
       }, undefined, (error) => {
@@ -255,6 +257,7 @@
 
           await mindarThree.stop();
           renderer.setAnimationLoop(null);
+          renderer.clear();
           video.pause();
 
           startBtn.textContent = "Iniciar AR";
