@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Mi Portafolio AR</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Importmap: ThreeJS + MindAR (versión recomendada en la documentación oficial) -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+          "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
+        }
+      }
+    </script>
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        overflow: hidden;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+
+      #container {
+        width: 100vw;
+        height: 100vh;
+        position: relative;
+      }
+
+      #controls {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 2;
+        display: flex;
+        gap: 12px;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 16px 20px;
+        border-radius: 50px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      }
+
+      #controls button {
+        padding: 14px 28px;
+        font-size: 16px;
+        font-weight: 600;
+        border: none;
+        border-radius: 30px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        white-space: nowrap;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        min-width: 140px;
+      }
+
+      #startButton {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      #startButton:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+      }
+
+      #startButton:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4);
+      }
+
+      #stopButton {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+      }
+
+      #stopButton:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(245, 87, 108, 0.6);
+      }
+
+      #stopButton:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 10px rgba(245, 87, 108, 0.4);
+      }
+
+      /* Responsive para pantallas pequeñas */
+      @media (max-width: 480px) {
+        #controls {
+          bottom: 16px;
+          padding: 12px 16px;
+          flex-direction: column;
+          width: calc(100% - 32px);
+          margin: 0 16px;
+        }
+
+        #controls button {
+          padding: 16px 24px;
+          font-size: 15px;
+          min-width: 100%;
+        }
+      }
+
+      /* Responsive para tablets */
+      @media (min-width: 481px) and (max-width: 768px) {
+        #controls button {
+          padding: 14px 24px;
+          min-width: 130px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="controls">
+      <button id="startButton">Iniciar AR</button>
+      <button id="stopButton">Detener</button>
+    </div>
+
+    <!-- Video oculto que se usará como textura -->
+    <video
+      id="introVideo"
+      src="media/intro.mp4"
+      loop
+      playsinline
+      style="display: none"
+    ></video>
+
+    <div id="container"></div>
+
+    <script type="module">
+      import * as THREE from "three";
+      import { MindARThree } from "mindar-image-three";
+      import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+      // 1. Inicializar MindAR con tu archivo targets.mind
+      const mindarThree = new MindARThree({
+        container: document.querySelector("#container"),
+        imageTargetSrc: "./assets/targets.mind",
+      });
+
+      const { renderer, scene, camera } = mindarThree;
+
+      // 2. Iluminación básica
+      const light = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
+      scene.add(light);
+
+      // 3. Anchor para el target (índice 0 = primer target del archivo .mind)
+      const anchor = mindarThree.addAnchor(0);
+
+      // ========== CONTENIDO TIPO 1: OBJETO 3D ==========
+      // Cubo 3D simple (si no usas modelo propio)
+      const cubeGeometry = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+      const cubeMaterial = new THREE.MeshStandardMaterial({
+        color: 0x0077ff,
+        metalness: 0.3,
+        roughness: 0.4,
+      });
+      const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+      cube.position.set(0, 0.2, 0);
+      anchor.group.add(cube);
+
+      // OPCIONAL: reemplazar el cubo por tu modelo avatar.glb
+      // const loader = new GLTFLoader();
+      // loader.load("models/avatar.glb", (gltf) => {
+      //   gltf.scene.scale.set(0.2, 0.2, 0.2);
+      //   gltf.scene.position.set(0, 0, 0.1);
+      //   anchor.group.add(gltf.scene);
+      // });
+
+      // ========== CONTENIDO TIPO 2: IMAGEN (tu foto/logo) ==========
+      const textureLoader = new THREE.TextureLoader();
+      const profileTexture = textureLoader.load("assets/profile.jpg"); // tu foto
+
+      const imageGeometry = new THREE.PlaneGeometry(0.8, 0.45);
+      const imageMaterial = new THREE.MeshBasicMaterial({
+        map: profileTexture,
+        transparent: true,
+      });
+
+      const imagePlane = new THREE.Mesh(imageGeometry, imageMaterial);
+      imagePlane.position.set(0, -0.2, 0);
+      anchor.group.add(imagePlane);
+
+      // ========== CONTENIDO TIPO 3: VIDEO ==========
+      const video = document.getElementById("introVideo");
+      const videoTexture = new THREE.VideoTexture(video);
+      const videoGeometry = new THREE.PlaneGeometry(0.8, 0.45);
+      const videoMaterial = new THREE.MeshBasicMaterial({
+        map: videoTexture,
+        side: THREE.DoubleSide,
+      });
+
+      const videoPlane = new THREE.Mesh(videoGeometry, videoMaterial);
+      videoPlane.position.set(0, 0.6, 0);
+      anchor.group.add(videoPlane);
+
+      // Animación simple: el cubo gira
+      const clock = new THREE.Clock();
+      let isRunning = false;
+      const startBtn = document.getElementById("startButton");
+      const stopBtn = document.getElementById("stopButton");
+
+      const start = async () => {
+        if (isRunning) return;
+        
+        try {
+          isRunning = true;
+          startBtn.disabled = true;
+          startBtn.textContent = "Cargando...";
+
+          // Iniciar RA y luego reproducir el video (después de acción del usuario)
+          await mindarThree.start();
+          video.play();
+
+          startBtn.textContent = "Detener (Alt)";
+          stopBtn.disabled = false;
+
+          renderer.setAnimationLoop(() => {
+            const delta = clock.getDelta();
+            cube.rotation.y += delta * 1.0;
+
+            renderer.render(scene, camera);
+          });
+        } catch (error) {
+          console.error("Error al iniciar AR:", error);
+          startBtn.textContent = "Iniciar AR";
+          startBtn.disabled = false;
+          isRunning = false;
+          alert("Error al iniciar la experiencia AR. Verifica que tengas una cámara disponible.");
+        }
+      };
+
+      const stop = async () => {
+        if (!isRunning) return;
+        
+        try {
+          isRunning = false;
+          stopBtn.disabled = true;
+          stopBtn.textContent = "Deteniendo...";
+
+          await mindarThree.stop();
+          renderer.setAnimationLoop(null);
+          video.pause();
+
+          startBtn.textContent = "Iniciar AR";
+          startBtn.disabled = false;
+          stopBtn.textContent = "Detener";
+          stopBtn.disabled = true;
+        } catch (error) {
+          console.error("Error al detener AR:", error);
+          stopBtn.textContent = "Detener";
+          stopBtn.disabled = false;
+        }
+      };
+
+      startBtn.addEventListener("click", () => start());
+      stopBtn.addEventListener("click", () => stop());
+      stopBtn.disabled = true;
+    </script>
+  </body>
+</html>
