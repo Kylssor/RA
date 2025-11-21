@@ -79,18 +79,17 @@
         box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4);
       }
 
-      #stopButton {
+      #toggleButton.active {
         background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        color: white;
         box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
       }
 
-      #stopButton:hover {
+      #toggleButton.active:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(245, 87, 108, 0.6);
       }
 
-      #stopButton:active {
+      #toggleButton.active:active {
         transform: translateY(0);
         box-shadow: 0 2px 10px rgba(245, 87, 108, 0.4);
       }
@@ -126,8 +125,7 @@
 
   <body>
     <div id="controls">
-      <button id="startButton">Iniciar AR</button>
-      <button id="stopButton">Detener</button>
+      <button id="toggleButton">Iniciar AR</button>
     </div>
 
     <!-- Video oculto que se usará como textura -->
@@ -214,35 +212,36 @@
       // Animación simple: el cubo gira
       const clock = new THREE.Clock();
       let isRunning = false;
-      const startBtn = document.getElementById("startButton");
-      const stopBtn = document.getElementById("stopButton");
+      const toggleBtn = document.getElementById("toggleButton");
 
       const start = async () => {
         if (isRunning) return;
         
         try {
           isRunning = true;
-          startBtn.disabled = true;
-          startBtn.textContent = "Cargando...";
+          toggleBtn.disabled = true;
+          toggleBtn.textContent = "Cargando...";
 
           // Iniciar RA y luego reproducir el video (después de acción del usuario)
           await mindarThree.start();
           video.play();
 
-          startBtn.textContent = "AR Activo";
-          startBtn.disabled = true;
-          stopBtn.disabled = false;
+          toggleBtn.textContent = "Detener";
+          toggleBtn.disabled = false;
+          toggleBtn.classList.add("active");
 
           renderer.setAnimationLoop(() => {
             const delta = clock.getDelta();
-            cube.rotation.y += delta * 1.0;
-
+            if (cube) {
+              cube.rotation.y += delta * 1.0;
+            }
             renderer.render(scene, camera);
           });
         } catch (error) {
           console.error("Error al iniciar AR:", error);
-          startBtn.textContent = "Iniciar AR";
-          startBtn.disabled = false;
+          toggleBtn.textContent = "Iniciar AR";
+          toggleBtn.disabled = false;
+          toggleBtn.classList.remove("active");
           isRunning = false;
           alert("Error al iniciar la experiencia AR. Verifica que tengas una cámara disponible.");
         }
@@ -253,32 +252,46 @@
         
         try {
           isRunning = false;
-          stopBtn.disabled = true;
-          stopBtn.textContent = "Deteniendo...";
+          toggleBtn.disabled = true;
+          toggleBtn.textContent = "Limpiando...";
 
           await mindarThree.stop();
           renderer.setAnimationLoop(null);
-          renderer.clear();
           
-          // Reiniciar video completamente para evitar glitches de audio
+          // Limpiar completamente: pausar video, reiniciar, y limpiar renderer
           video.pause();
           video.currentTime = 0;
           videoTexture.needsUpdate = true;
+          
+          // Limpiar canvas completamente
+          renderer.clear();
+          renderer.clearColor();
+          
+          // Forzar limpieza de WebGL
+          const canvas = renderer.domElement;
+          const gl = canvas.getContext("webgl") || canvas.getContext("webgl2");
+          if (gl) {
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+          }
 
-          startBtn.textContent = "Iniciar AR";
-          startBtn.disabled = false;
-          stopBtn.textContent = "Detener";
-          stopBtn.disabled = true;
+          toggleBtn.textContent = "Iniciar AR";
+          toggleBtn.disabled = false;
+          toggleBtn.classList.remove("active");
         } catch (error) {
           console.error("Error al detener AR:", error);
-          stopBtn.textContent = "Detener";
-          stopBtn.disabled = false;
+          toggleBtn.textContent = "Iniciar AR";
+          toggleBtn.disabled = false;
+          toggleBtn.classList.remove("active");
         }
       };
 
-      startBtn.addEventListener("click", () => start());
-      stopBtn.addEventListener("click", () => stop());
-      stopBtn.disabled = true;
+      toggleBtn.addEventListener("click", () => {
+        if (isRunning) {
+          stop();
+        } else {
+          start();
+        }
+      });
     </script>
   </body>
 </html>
