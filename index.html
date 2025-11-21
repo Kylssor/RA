@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <title>Mi Portafolio AR</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 
     <!-- Importmap: ThreeJS + MindAR (versión recomendada en la documentación oficial) -->
     <script type="importmap">
@@ -25,6 +25,7 @@
         margin: 0;
         overflow: hidden;
         font-family: system-ui, -apple-system, sans-serif;
+        touch-action: none;
       }
 
       #container {
@@ -164,7 +165,7 @@
       const loader = new GLTFLoader();
       loader.load("models/avatar.glb", (gltf) => {
         cube = gltf.scene;
-        cube.scale.set(0.2, 0.2, 0.2);
+        cube.scale.set(0.08, 0.08, 0.08);
         cube.position.set(0, 0.1, 0);
         anchor.group.add(cube);
       }, undefined, (error) => {
