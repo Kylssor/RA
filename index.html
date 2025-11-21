@@ -195,7 +195,7 @@
       });
 
       const imagePlane = new THREE.Mesh(imageGeometry, imageMaterial);
-      imagePlane.position.set(0, -0.2, 0);
+      imagePlane.position.set(0, -0.4, 0);
       anchor.group.add(imagePlane);
 
       // ========== CONTENIDO TIPO 3: VIDEO ==========
@@ -208,7 +208,7 @@
       });
 
       const videoPlane = new THREE.Mesh(videoGeometry, videoMaterial);
-      videoPlane.position.set(0, 0.6, 0);
+      videoPlane.position.set(0, 0.75, 0);
       anchor.group.add(videoPlane);
 
       // Animación simple: el cubo gira
@@ -229,7 +229,8 @@
           await mindarThree.start();
           video.play();
 
-          startBtn.textContent = "Detener (Alt)";
+          startBtn.textContent = "AR Activo";
+          startBtn.disabled = true;
           stopBtn.disabled = false;
 
           renderer.setAnimationLoop(() => {
@@ -258,7 +259,11 @@
           await mindarThree.stop();
           renderer.setAnimationLoop(null);
           renderer.clear();
+          
+          // Reiniciar video completamente para evitar glitches de audio
           video.pause();
+          video.currentTime = 0;
+          videoTexture.needsUpdate = true;
 
           startBtn.textContent = "Iniciar AR";
           startBtn.disabled = false;
