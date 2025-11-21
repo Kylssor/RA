@@ -158,6 +158,30 @@
 
       // 3. Anchor para el target (índice 0 = primer target del archivo .mind)
       const anchor = mindarThree.addAnchor(0);
+      
+      // Ocultar el anchor al inicio (solo mostrar cuando se detecte el target)
+      anchor.group.visible = false;
+      
+      // Listener para mostrar/ocultar cuando se detecta o pierde el target
+      anchor.onTargetFound = () => {
+        anchor.group.visible = true;
+      };
+      
+      anchor.onTargetLost = () => {
+        anchor.group.visible = false;
+      };
+      
+      // Ocultar el anchor al inicio (solo mostrar cuando se detecte el target)
+      anchor.group.visible = false;
+      
+      // Listener para mostrar/ocultar cuando se detecta o pierde el target
+      anchor.onTargetFound = () => {
+        anchor.group.visible = true;
+      };
+      
+      anchor.onTargetLost = () => {
+        anchor.group.visible = false;
+      };
 
       // ========== CONTENIDO TIPO 1: OBJETO 3D ==========
       // Cargar modelo avatar.glb
@@ -248,8 +272,6 @@
       };
 
       const stop = async () => {
-        if (!isRunning) return;
-        
         try {
           isRunning = false;
           toggleBtn.disabled = true;
@@ -262,6 +284,9 @@
           video.pause();
           video.currentTime = 0;
           videoTexture.needsUpdate = true;
+          
+          // Ocultar contenido
+          anchor.group.visible = false;
           
           // Limpiar canvas completamente
           renderer.clear();
@@ -282,6 +307,7 @@
           toggleBtn.textContent = "Iniciar AR";
           toggleBtn.disabled = false;
           toggleBtn.classList.remove("active");
+          isRunning = false;
         }
       };
 
